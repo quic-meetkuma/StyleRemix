@@ -66,6 +66,7 @@ from datasets import Dataset
 import argparse
 from huggingface_hub import login
 import json
+import jsonlines
 import sys
 from sklearn.model_selection import train_test_split
 from tokenizers.processors import TemplateProcessing
@@ -79,17 +80,34 @@ def main(args):
     set_seed(args.seed)
 
     # Load the data
-    data = json.load(open(args.data_path, "r"))
-    print(f"List of available styles: {list(data.keys())}")
-    if args.style not in data.keys():
+    data = jsonlines.open(args.data_path)
+
+    filtered_data = []  
+    for d in data:
+        if args.style not in d["category"]:
+            continue
+        sample = {}
+        sample["original"] = d["original"]
+        sample["generation"] = d["generation"]
+        filtered_data.append(sample)
+    
+    # print(f"List of available styles: {list(data.keys())}")
+    # if args.style not in data.keys():
+        # print("Passed in style not found in data. Exiting")
+        # sys.exit()
+        
+    if len(filtered_data) == 0:
         print("Passed in style not found in data. Exiting")
         sys.exit()
 
     all_origs = []
     all_rewrites = []
-    for k in data[args.style]:        
-        all_origs.extend([c['content'] for c in data[args.style][k]['originals']])
-        all_rewrites.extend(data[args.style][k]['generations'])
+    for sample in filtered_data:
+        all_origs.append(sample["original"])
+        all_rewrites.append(sample["generation"])
+    # for k in data[args.style]:        
+    #     all_origs.extend([c['content'] for c in data[args.style][k]['originals']])
+    #     all_rewrites.extend(data[args.style][k]['generations'])
 
     # Split into train and dev set
     train_data, eval_data = train_test_split(
@@ -162,7 +180,7 @@ def main(args):
         per_device_train_batch_size=args.train_batch_size,
         per_device_eval_batch_size=args.eval_batch_size,
         report_to="tensorboard",
-        evaluation_strategy='steps',
+        eval_strategy='steps',
         num_train_epochs=args.epochs,
         eval_steps = save_steps,
         save_steps = save_steps,
