@@ -209,10 +209,10 @@ def main(args):
         eval_dataset=eval_dataset,
         # dataset_text_field="text",
         formatting_func=formatting_prompts_func,
-        packing=False,
-        max_seq_length=args.max_seq_length,
+        # packing=False,
+        # max_seq_length=args.max_seq_length,
         peft_config=peft_config,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         data_collator=collator
     )
     print("\n")

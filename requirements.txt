@@ -8,3 +8,8 @@ textstat
 sentence-transformers
 tf-keras
 nevergrad
+trl
+peft
+torch==2.4.1
+torchvision==0.19.1
+torchaudio==2.4.1
