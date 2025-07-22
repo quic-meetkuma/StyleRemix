@@ -166,13 +166,13 @@ if __name__ == "__main__":
     parser.add_argument(
         '--model', type=str, default="meta-llama/Meta-Llama-3-8B", help="Base model used for generation")
     parser.add_argument(
-        '--input_path', type=str, default="../data/test_data/StyleMix", help="Directory of test data (torch version)")
+        '--input_path', type=str, default="./data/test_data/StyleMix", help="Directory of test data (torch version)")
     parser.add_argument(
-        '--cache_dir', type=str, default="../cache", help="Cache directory used for loading models")
+        '--cache_dir', type=str, default="./cache", help="Cache directory used for loading models")
     parser.add_argument(
-        '--output_dir', type=str, default="../results", help="Exact directory/name of output file for final results")
+        '--output_dir', type=str, default="./results", help="Exact directory/name of output file for final results")
     parser.add_argument(
-        '--eval_test_average_dir', type=str, default="../data/test_data/StyleMix_averages_by_author", help="If already calculated then put directory, if not than put 'None'")
+        '--eval_test_average_dir', type=str, default="./data/test_data/StyleMix_averages_by_author", help="If already calculated then put directory, if not than put 'None'")
 
     # LoRA/LoRAHub Parameters
     parser.add_argument(

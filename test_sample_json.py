@@ -10,6 +10,11 @@ import argparse
 from transformers import PreTrainedModel, PreTrainedTokenizer
 import random
 import numpy as np
+import json
+from src.eval_data import eval_grade_level, eval_length
+from tqdm import tqdm
+
+torch.manual_seed(42)
 
 # MODEL_PATHS = {
 #     "length_more": "hallisky/lora-length-long-llama-3-8b",
@@ -30,25 +35,47 @@ import numpy as np
 #     "type_descriptive": "hallisky/lora-type-descriptive-llama-3-8b",
 # }
 
-MODEL_PATHS = {
-    "formality_formal": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_formality_formal_4xddp_cuda/complete_epoch_5/",
-    "sarcasm_less": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_sarcasm_less_4xddp_cuda/complete_epoch_5/",
-    "formality_informal": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_formality_informal_4xddp_cuda/complete_epoch_5/",
-    "sarcasm_more": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_sarcasm_more_4xddp_cuda/complete_epoch_5/",
-    "function_less": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_function_less_4xddp_cuda/complete_epoch_5/",
-    "function_more": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_function_more_4xddp_cuda/complete_epoch_5/",
-    "type_descriptive": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_type_descriptive_4xddp_cuda/complete_epoch_5/",
-    "grade_less": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_grade_elementary_4xddp_cuda/complete_epoch_5/",
-    "type_expository": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_type_expository_4xddp_cuda/complete_epoch_5/",
-    "grade_more": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_grade_highschool_4xddp_cuda/complete_epoch_5/",
-    "type_narrative": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_type_narrative_4xddp_cuda/complete_epoch_5/",
-    "length_more": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_length_long_4xddp_cuda/complete_epoch_5/",
-    "type_persuasive": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_type_persuasive_4xddp_cuda/complete_epoch_5/",
-    "length_less": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_length_short_4xddp_cuda/complete_epoch_5/",
-    "voice_active": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_voice_active_4xddp_cuda/complete_epoch_5/",
-    "missspell": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_missspell_4xddp_cuda/complete_epoch_5/",
-    "voice_passive": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_voice_passive_4xddp_cuda/complete_epoch_5/"
-}
+# MODEL_PATHS = {
+#     "formality_formal": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_formality_formal_4xddp_cuda/complete_epoch_5/",
+#     "sarcasm_less": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_sarcasm_less_4xddp_cuda/complete_epoch_5/",
+#     "formality_informal": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_formality_informal_4xddp_cuda/complete_epoch_5/",
+#     "sarcasm_more": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_sarcasm_more_4xddp_cuda/complete_epoch_5/",
+#     "function_less": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_function_less_4xddp_cuda/complete_epoch_5/",
+#     "function_more": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_function_more_4xddp_cuda/complete_epoch_5/",
+#     "type_descriptive": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_type_descriptive_4xddp_cuda/complete_epoch_5/",
+#     "grade_less": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_grade_elementary_4xddp_cuda/complete_epoch_5/",
+#     "type_expository": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_type_expository_4xddp_cuda/complete_epoch_5/",
+#     "grade_more": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_grade_highschool_4xddp_cuda/complete_epoch_5/",
+#     "type_narrative": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_type_narrative_4xddp_cuda/complete_epoch_5/",
+#     "length_more": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_length_long_4xddp_cuda/complete_epoch_5/",
+#     "type_persuasive": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_type_persuasive_4xddp_cuda/complete_epoch_5/",
+#     "length_less": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_length_short_4xddp_cuda/complete_epoch_5/",
+#     "voice_active": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_voice_active_4xddp_cuda/complete_epoch_5/",
+#     "missspell": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_missspell_4xddp_cuda/complete_epoch_5/",
+#     "voice_passive": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_voice_passive_4xddp_cuda/complete_epoch_5/"
+# }
+
+# MODEL_PATHS = {
+#     "formality_formal": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_formality_formal_4xddp_cuda/complete_epoch_5/",
+#     "sarcasm_less": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_sarcasm_less_4xddp_cuda/complete_epoch_5/",
+#     "formality_informal": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_formality_informal_4xddp_cuda/complete_epoch_5/",
+#     "sarcasm_more": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_sarcasm_more_4xddp_cuda/complete_epoch_5/",
+#     "function_less": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_function_less_4xddp_cuda/complete_epoch_5/",
+#     "function_more": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_function_more_4xddp_cuda/complete_epoch_5/",
+#     "type_descriptive": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_type_descriptive_4xddp_cuda/complete_epoch_5/",
+#     "grade_less": "/workspace/style_remix/04_07/efficient-transformers/llama_3_1_8B_instruct_grade_elementary_gpu_peft_grade_elem/complete_epoch_5/",
+#     "type_expository": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_type_expository_4xddp_cuda/complete_epoch_5/",
+#     "grade_more": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_grade_highschool_4xddp_cuda/complete_epoch_5/",
+#     "type_narrative": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_type_narrative_4xddp_cuda/complete_epoch_5/",
+#     "length_more": "/workspace/style_remix/04_07/efficient-transformers/llama_3_1_8B_instruct_length_more_gpu_peft_length_more/complete_epoch_5/",
+#     "type_persuasive": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_type_persuasive_4xddp_cuda/complete_epoch_5/",
+#     "length_less": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_length_short_4xddp_cuda/complete_epoch_5/",
+#     "voice_active": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_voice_active_4xddp_cuda/complete_epoch_5/",
+#     "missspell": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_missspell_4xddp_cuda/complete_epoch_5/",
+#     "voice_passive": "/workspace/style_remix/efficient-transformers/llama_3_1_8B_voice_passive_4xddp_cuda/complete_epoch_5/"
+# }
+
+
 # MODEL_PATHS = {
 #     "formality_formal": "qaic_lora_weights/llama_3_1_8B_formality_formal_4xddp_qaic/complete_epoch_5/",
 #     "sarcasm_less": "qaic_lora_weights/llama_3_1_8B_sarcasm_less_4xddp_qaic/complete_epoch_5/",
@@ -68,6 +95,27 @@ MODEL_PATHS = {
 #     "missspell": "qaic_lora_weights/llama_3_1_8B_missspell_4xddp_qaic/complete_epoch_5/",
 #     "voice_passive": "qaic_lora_weights/llama_3_1_8B_voice_passive_4xddp_qaic/complete_epoch_5/"
 # }
+
+MODEL_PATHS = {
+    "formality_formal": "qaic_lora_weights/llama_3_1_8B_formality_formal_4xddp_qaic/complete_epoch_5/",
+    "sarcasm_less": "qaic_lora_weights/llama_3_1_8B_sarcasm_less_4xddp_qaic/complete_epoch_5/",
+    "formality_informal": "qaic_lora_weights/llama_3_1_8B_formality_informal_4xddp_qaic/complete_epoch_5/",
+    "sarcasm_more": "qaic_lora_weights/llama_3_1_8B_sarcasm_more_4xddp_qaic/complete_epoch_5/",
+    "function_less": "qaic_lora_weights/llama_3_1_8B_function_less_4xddp_qaic/complete_epoch_5/",
+    "function_more": "qaic_lora_weights/llama_3_1_8B_function_more_4xddp_qaic/complete_epoch_5/",
+    "type_descriptive": "qaic_lora_weights/llama_3_1_8B_type_descriptive_4xddp_qaic/complete_epoch_5/",
+        "grade_less": "/workspace/StyleRemix/qaic_lora_weights_22_07/llama_3.1_8b_grade_elementary_peft_v2_lr_1e-4_eps_2_21_07_32xddp_sorting_false/complete_epoch_2/",
+    "type_expository": "qaic_lora_weights/llama_3_1_8B_type_expository_4xddp_qaic/complete_epoch_5/",
+    "grade_more": "qaic_lora_weights/llama_3_1_8B_grade_highschool_4xddp_qaic/complete_epoch_5/",
+    "type_narrative": "qaic_lora_weights/llama_3_1_8B_type_narrative_4xddp_qaic/complete_epoch_5/",
+        "length_more": "/workspace/StyleRemix/qaic_lora_weights_22_07/llama_3.1_8b_length_more_peft_v2_lr_1e-4_eps_2_21_07_32xddp_sorting_false/complete_epoch_2/",
+    "type_persuasive": "qaic_lora_weights/llama_3_1_8B_type_persuasive_4xddp_qaic/complete_epoch_5/",
+    "length_less": "qaic_lora_weights/llama_3_1_8B_length_short_4xddp_qaic/complete_epoch_5/",
+    "voice_active": "qaic_lora_weights/llama_3_1_8B_voice_active_4xddp_qaic/complete_epoch_5/",
+    "missspell": "qaic_lora_weights/llama_3_1_8B_missspell_4xddp_qaic/complete_epoch_5/",
+    "voice_passive": "qaic_lora_weights/llama_3_1_8B_voice_passive_4xddp_qaic/complete_epoch_5/"
+}
+
 FIRST_MODEL = list(MODEL_PATHS.keys())[0]
 MAX_NEW_TOKENS = 1024
 
@@ -75,6 +123,18 @@ MAX_NEW_TOKENS = 1024
 def convert_data_to_format(text):
     output = f"### Original: {text}\n ### Rewrite:"
     return output
+
+
+def compute_metric(list_of_text):    
+    grade_dict, avg_grade = eval_grade_level(list_of_text)
+    # print("Grade: FK: ", grade_dict['fk'][0])
+    # print("Grade: LW: ", grade_dict['lw'][0])
+    # print("Grade: GF: ", grade_dict['gf'][0])
+    # print("Average : ", avg_grade[0])
+    _, _, _, words_per_sentence, _ = eval_length(list_of_text)
+    # print("Words per sentence: ", words_per_sentence[0])
+    return np.mean(avg_grade), np.mean(words_per_sentence)
+
 
 def remix(
     model: PreTrainedModel, 
@@ -141,8 +201,7 @@ def remix(
             sliders_dict[cur_key[0]] = cur_key[1]
 
     # Make the adapter and switch to it
-    print(sliders_dict)
-
+    print(f"Slider dict: {sliders_dict}")
     if len(sliders_dict) > 0:
         combo_adapter_name = ""
         for slider_key in sliders_dict:
@@ -191,17 +250,18 @@ def remix(
     return latest_obfuscation
 
 def main(args):
-    # Implement your custom loading of texts here
-    texts = [
-        # "Hey, how are you doing",
-        # "Nah, that's not really my style.",
-        # "In 1776, history was made in the United States. A monumental year in history, America officially seceded from England.",
-        "As the first light of dawn crept over the horizon, Elara stood at the edge of the ancient forest, her heart pounding with anticipation. The whispers of the trees seemed to call her name, urging her to step into the unknown. She took a deep breath, feeling the cool morning air fill her lungs, and with a determined stride, she crossed the threshold into the mystical woods."
-        ]
+    with open(args.json_file, "r") as f:
+        text_data = json.load(f)
 
+    texts = []
+    for key, value in text_data.items():
+        value = value.replace("### Original: ", "")
+        texts.append(value)
+    
     # Load models
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    model_id = "meta-llama/Meta-Llama-3-8B"
+    # model_id = "meta-llama/Meta-Llama-3-8B"
+    model_id = "meta-llama/Llama-3.1-8B-Instruct"
 
     tokenizer = AutoTokenizer.from_pretrained(model_id, add_bos_token=True, add_eos_token=False, padding_side="left")
     tokenizer.add_special_tokens({'pad_token': '<padding_token>'})
@@ -216,7 +276,9 @@ def main(args):
     model.to(device)
     model.eval()
 
-    for t in texts:
+    comb_output_txt = []
+    result = {}
+    for i, t in enumerate(tqdm(texts)):
         if not args.random_weights:
             cur_remix = remix(
                 model,
@@ -269,7 +331,18 @@ def main(args):
             )
             
         print(f"Input: {t}\nOutput: {cur_remix['output']}\n\n")
-
+        result[i] = {}
+        result[i]['input_txt'] = t
+        result[i]['output_txt'] = cur_remix['output']
+        comb_output_txt.append(result[i]['output_txt'])
+    
+    avg_grade, avg_words_per_sentence = compute_metric(comb_output_txt)
+    print(f"Average for grade-level (elementary): {avg_grade:.4f}")
+    print(f"Avg. words per sentence: {avg_words_per_sentence:.4f}")
+    
+    with open(args.result_file, "w") as f:
+        json.dump(result, f, indent=4)
+    print("Results saved in ", args.result_file)
 
 
 if __name__ == "__main__":
@@ -283,6 +356,8 @@ if __name__ == "__main__":
     parser.add_argument('--formality', type=float, default=0, help='Control the formality of the text. Positive for more formal, negative for less formal, range from -1 to 1.')
     parser.add_argument('--sarcasm', type=float, default=0., help='Control the sarcasm of the text. Positive for more sarcastic, negative for less sarcastic, range from -1 to 1.')
     parser.add_argument('--voice', type=float, default=0, help='Control the voice of the text. Positive for active, negative for passive, range from -1 to 1.')
+    parser.add_argument('--json_file', type=str, help='Json file containing input text.')
+    parser.add_argument('--result_file', type=str, help='Result file name.')
 
     # Add mutually exclusive group for text type with float range from 0 to 1
     type_group = parser.add_mutually_exclusive_group()
@@ -303,9 +378,16 @@ if __name__ == "__main__":
     """
     Example commands to run StyleRemix on text:
 
-    # Passing in manually weights for different style elements (higher=more, lower=less, -1 to 1)
-    python3 quickstart.py --length 0.7 --sarcasm 0.9
+    # For baseline
+    python3 test_sample_json.py --length 0.0 --json_file prompts_long_set.json --result_file results_baseline_04_07.json
+    
+    # For grade elementary lora
+    python3 test_sample_json.py --grade_level -1.0 --json_file prompts_long_set.json --result_file results_grade_level_elem_21_07.json
 
-    # Randomly set weights for different style elements
-    python3 quickstart.py --random_weights --num_random 3
+    # For sentence lengthening
+    python3 test_sample_json.py --length 1.0 --json_file prompts_long_set.json --result_file results_sentence_long_21_07.json
+
+    # For both
+    python3 test_sample_json.py --length 1.0 --grade_level -1.0 --json_file prompts_long_set.json --result_file results_grade_level_elem_sentence_long_21_07.json
+
     """

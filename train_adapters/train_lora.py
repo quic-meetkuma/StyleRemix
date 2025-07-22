@@ -72,8 +72,8 @@ from sklearn.model_selection import train_test_split
 from tokenizers.processors import TemplateProcessing
 
 def main(args):
-    output_dir = os.path.join(args.output_dir,date_time)
-    os.makedirs(output_dir)
+    output_dir = os.path.join(args.output_dir, date_time)
+    os.makedirs(output_dir, exist_ok=True)
     with open(os.path.join(output_dir, "args.json"), "w") as f:
         json.dump(vars(args), f, indent=4)
     print(f"\n\t*\tSaving to {output_dir}\n")
@@ -130,8 +130,9 @@ def main(args):
     # Set the huggingface token
     if args.hf_token:
         login(args.hf_token)
-    
-    device = 'cuda' if torch.cuda.device_count() > 0 else 'cpu'
+
+    # device = 'cuda' if torch.cuda.device_count() > 0 else 'cpu'
+    device = args.device
     print(f"\n\t*\tModels are on {device}\n")
 
     # Initialize LoRA configuration for model adaptation    
@@ -170,7 +171,7 @@ def main(args):
     * peft.get_peft_model(model, peft_config)
     """
 
-    steps = len(train_data)/(args.train_batch_size*torch.cuda.device_count())
+    steps = len(train_data)/(args.train_batch_size * args.num_devices)
     save_steps = math.ceil(steps / args.save_ratio) # Save every quarter epoch
     print(f"\n\t*\tSave steps is {save_steps}\n")
 
@@ -200,8 +201,13 @@ def main(args):
     response_template = " ### Rewrite:"
     collator = DataCollatorForCompletionOnlyLM(response_template, tokenizer=tokenizer)
 
+    # from accelerate import PartialState
+    # device_string = PartialState(device=torch.device(device)).process_index
+    # model = AutoModelForCausalLM.from_pretrained(args.model, torch_dtype=torch.float16, device_map={'':device_string})
     model = AutoModelForCausalLM.from_pretrained(args.model)
     model.resize_token_embeddings(len(tokenizer)) # Resize to add pad token. Value doesn't matter
+    # model = DDP(model, device_ids=[dist.get_rank()])
+
     trainer = SFTTrainer(
         model,
         args=training_args,
@@ -209,10 +215,10 @@ def main(args):
         eval_dataset=eval_dataset,
         # dataset_text_field="text",
         formatting_func=formatting_prompts_func,
-        packing=False,
-        max_seq_length=args.max_seq_length,
+        # packing=False,
+        # max_seq_length=args.max_seq_length,
         peft_config=peft_config,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         data_collator=collator
     )
     print("\n")
@@ -323,4 +329,18 @@ if __name__ == "__main__":
         help="Maximum sequence length for the input text."
     )
 
+    parser.add_argument(
+        '--device', 
+        type=str, 
+        default="cuda",
+        help="Device to be used for training."
+    )
+    
+    parser.add_argument(
+        '--num_devices', 
+        type=int, 
+        default=1,
+        help="Number of devices to be used."
+    )
+    
     main(parser.parse_args())
