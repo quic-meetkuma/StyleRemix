@@ -104,11 +104,19 @@ MODEL_PATHS = {
     "function_less": "qaic_lora_weights/llama_3_1_8B_function_less_4xddp_qaic/complete_epoch_5/",
     "function_more": "qaic_lora_weights/llama_3_1_8B_function_more_4xddp_qaic/complete_epoch_5/",
     "type_descriptive": "qaic_lora_weights/llama_3_1_8B_type_descriptive_4xddp_qaic/complete_epoch_5/",
-        "grade_less": "/workspace/StyleRemix/qaic_lora_weights_22_07/llama_3.1_8b_grade_elementary_peft_v2_lr_1e-4_eps_2_21_07_32xddp_sorting_false/complete_epoch_2/",
+        # "grade_less": "/workspace/StyleRemix/qaic_lora_weights_22_07/llama_3.1_8b_grade_elementary_peft_v2_lr_1e-4_eps_2_21_07_32xddp_sorting_false/complete_epoch_2/",
+        "grade_less": "/workspace/StyleRemix/qaic_lora_weights_25_07/llama_3_1_8b_grade_elementary_peft_v3_lr_1e-4_eps_2_25_07_32xddp_sorting_false_v2_linear_w_warmup/complete_epoch_2/",
+    "type_persuasive": "qaic_lora_weights/llama_3_1_8B_type_persuasive_4xddp_qaic/complete_epoch_5/",
+    "length_more": "qaic_lora_weights/llama_3_1_8B_length_long_4xddp_qaic/complete_epoch_5/",
+    "type_persuasive": "qaic_lora_weights/llama_3_1_8B_type_persuasive_4xddp_qaic/complete_epoch_5/",
+    "length_less": "qaic_lora_weights/llama_3_1_8B_length_short_4xddp_qaic/complete_epoch_5/",
+    "voice_active": "qaic_lora_weights/llama_3_1_8B_voice_active_4xddp_qaic/complete_epoch_5/",
+    "missspell": "qaic_lora_weights/llama_3_1_8B_missspell_4xddp_qaic/complete_epoch_5/",
+    "voice_passive": "qaic_lora_weights/llama_3_1_8B_voice_passive_4xddp_qaic/complete_epoch_5/",
     "type_expository": "qaic_lora_weights/llama_3_1_8B_type_expository_4xddp_qaic/complete_epoch_5/",
     "grade_more": "qaic_lora_weights/llama_3_1_8B_grade_highschool_4xddp_qaic/complete_epoch_5/",
     "type_narrative": "qaic_lora_weights/llama_3_1_8B_type_narrative_4xddp_qaic/complete_epoch_5/",
-        "length_more": "/workspace/StyleRemix/qaic_lora_weights_22_07/llama_3.1_8b_length_more_peft_v2_lr_1e-4_eps_2_21_07_32xddp_sorting_false/complete_epoch_2/",
+        "length_more": "/workspace/StyleRemix/qaic_lora_weights_22_07/llama_3_1_8b_length_more_peft_v2_lr_1e-4_eps_2_21_07_32xddp_sorting_false/complete_epoch_2/",
     "type_persuasive": "qaic_lora_weights/llama_3_1_8B_type_persuasive_4xddp_qaic/complete_epoch_5/",
     "length_less": "qaic_lora_weights/llama_3_1_8B_length_short_4xddp_qaic/complete_epoch_5/",
     "voice_active": "qaic_lora_weights/llama_3_1_8B_voice_active_4xddp_qaic/complete_epoch_5/",
@@ -117,6 +125,7 @@ MODEL_PATHS = {
 }
 
 FIRST_MODEL = list(MODEL_PATHS.keys())[0]
+# MAX_NEW_TOKENS = 250
 MAX_NEW_TOKENS = 1024
 
 # Converts text to the correct format for LoRA adapters in StyleRemix
@@ -223,6 +232,7 @@ def remix(
         input_length = inputs.input_ids.shape[1]
         with torch.no_grad(): 
             outputs = model.generate(**inputs, max_new_tokens=MAX_NEW_TOKENS, top_p = 0.95)
+            # outputs = model.generate(**inputs, max_new_tokens=MAX_NEW_TOKENS, do_sample=True, stopping_criteria=None)
         response = tokenizer.decode(outputs[0, input_length:], skip_special_tokens=True).strip()
         full_output = tokenizer.decode(outputs[0], skip_special_tokens=False)
     else:
@@ -260,7 +270,7 @@ def main(args):
     
     # Load models
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    # model_id = "meta-llama/Meta-Llama-3-8B"
+    # model_id = "meta-llama/Meta-Llama-3-8B-Instruct"
     model_id = "meta-llama/Llama-3.1-8B-Instruct"
 
     tokenizer = AutoTokenizer.from_pretrained(model_id, add_bos_token=True, add_eos_token=False, padding_side="left")
