@@ -201,13 +201,8 @@ def main(args):
     response_template = " ### Rewrite:"
     collator = DataCollatorForCompletionOnlyLM(response_template, tokenizer=tokenizer)
 
-    # from accelerate import PartialState
-    # device_string = PartialState(device=torch.device(device)).process_index
-    # model = AutoModelForCausalLM.from_pretrained(args.model, torch_dtype=torch.float16, device_map={'':device_string})
     model = AutoModelForCausalLM.from_pretrained(args.model)
     model.resize_token_embeddings(len(tokenizer)) # Resize to add pad token. Value doesn't matter
-    # model = DDP(model, device_ids=[dist.get_rank()])
-
     trainer = SFTTrainer(
         model,
         args=training_args,

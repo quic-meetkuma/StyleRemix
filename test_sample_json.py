@@ -238,6 +238,16 @@ def remix(
     else:
         response = input_text # If no sliders passed, do not do anything
         full_output = response
+        # NOTE: Below code is useful when we want to ingest the text generated via Imagine UI and compute metrics on it
+        # Convert the list of strings in data to a list of model inputs
+        # converted_text = convert_data_to_format(input_text)
+        # inputs = tokenizer(converted_text, return_tensors="pt", max_length=2048, truncation=True).to(device)
+        # input_length = inputs.input_ids.shape[1]
+        # with torch.no_grad(): 
+        #     outputs = model.generate(**inputs, max_new_tokens=MAX_NEW_TOKENS, top_p = 0.95)
+        #     # outputs = model.generate(**inputs, max_new_tokens=MAX_NEW_TOKENS, do_sample=True, stopping_criteria=None)
+        # response = tokenizer.decode(outputs[0, input_length:], skip_special_tokens=True).strip()
+        # full_output = tokenizer.decode(outputs[0], skip_special_tokens=False)
 
     latest_obfuscation = {
         "input_text": input_text,
@@ -346,6 +356,15 @@ def main(args):
         result[i]['output_txt'] = cur_remix['output']
         comb_output_txt.append(result[i]['output_txt'])
     
+    # NOTE: Below code is useful when we want to ingest the text generated via Imagine UI and compute metrics on it
+    # imagine_ui_output = "/workspace/StyleRemix/imaging_ui_response.txt"
+    # with open(imagine_ui_output, "r") as f:
+    #     lines = f.readlines()
+        
+    # comb_output_txt = []
+    # for line in lines:
+    #     comb_output_txt.append(line.strip())
+
     avg_grade, avg_words_per_sentence = compute_metric(comb_output_txt)
     print(f"Average for grade-level (elementary): {avg_grade:.4f}")
     print(f"Avg. words per sentence: {avg_words_per_sentence:.4f}")
